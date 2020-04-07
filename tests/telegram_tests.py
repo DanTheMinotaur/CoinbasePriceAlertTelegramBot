@@ -2,7 +2,7 @@ import unittest
 from app.telegram_connection import TelegramBot
 from dotenv import load_dotenv
 from os import environ
-from telegram import ParseMode
+import telegram
 
 load_dotenv('../.env')
 
@@ -20,7 +20,8 @@ class TestBotConnectivity(unittest.TestCase):
         self.assertTrue('message_id' in self.bot.send_message('Hello World [Testing]'))
 
     def test_send_md_message(self):
-        self.assertTrue('message_id' in self.bot.send_message('*Bold* [Testing]', parse_mode=ParseMode.MARKDOWN_V2))
+        result = self.bot.send_message("*bold* _italic_ `fixed width font` [link](http://google.com)\.", parse_mode=telegram.ParseMode.MARKDOWN_V2)
+        self.assertTrue('message_id' in result)
 
 
 if __name__ == '__main__':

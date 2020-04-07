@@ -1,4 +1,4 @@
-from telegram import Bot
+from telegram import Bot, ParseMode
 from telegram.error import Unauthorized
 
 
@@ -24,4 +24,4 @@ class TelegramBot:
         }
         if kwargs:
             payload.update(kwargs)
-        return self.bot.send_message(text=message, chat_id=self.chat_id)
+        return self.bot.send_message(**payload)
