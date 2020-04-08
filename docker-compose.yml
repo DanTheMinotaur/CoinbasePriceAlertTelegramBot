@@ -3,7 +3,7 @@ version: '3.3'
 services:
   coinbase_telegram_bot:
     build: .
-    container_name: coinbase_telegram_bot
+    container_name: btc_bot
     env_file:
       - .env
     volumes:
