@@ -18,8 +18,9 @@ class TelegramBot:
             exit()
 
     def send_message(self, message: str, **kwargs):
+        print(f'Price Alert Sent to Telegram')
         payload = {
-            "text": message,
+            "text": message.replace('.', '\\.'),
             "chat_id": self.chat_id
         }
         if kwargs:

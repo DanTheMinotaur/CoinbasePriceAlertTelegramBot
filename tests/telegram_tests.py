@@ -7,7 +7,7 @@ import telegram
 load_dotenv('../.env')
 
 TOKEN = environ['BOT_API_KEY']
-CHANNEL_ID = environ['CHANNEL_ID']
+CHANNEL_ID = environ['CHAT_ID']
 
 
 class TestBotConnectivity(unittest.TestCase):
