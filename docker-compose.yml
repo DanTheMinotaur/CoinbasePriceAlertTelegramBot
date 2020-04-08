@@ -6,5 +6,6 @@ services:
     container_name: btc_bot
     env_file:
       - .env
+    restart: unless-stopped
     volumes:
       - ./data:/usr/src/app/data
