@@ -1,4 +1,3 @@
-# from app.telegram_connection import TelegramBot
 from os import environ
 import json
 from json.decoder import JSONDecodeError
