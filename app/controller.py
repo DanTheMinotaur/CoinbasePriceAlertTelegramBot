@@ -5,6 +5,7 @@ from datetime import datetime
 from time import sleep
 from urllib.parse import urljoin
 import requests
+from jsonschema import validate
 
 VALID_PRICE_TYPES = ['spot', 'buy', 'sell']
 
@@ -85,6 +86,17 @@ def check_config():
 
 class CoinbaseBotController:
     PRICE_FILE = './data/last_price.json'
+
+    @staticmethod
+    def load_config(file: str) -> dict:
+        with open('../config_schema.json') as f:
+            schema = json.loads(f.read())
+        with open(file, 'r') as f:
+            config = json.loads(f.read())
+
+        validate(instance=config, schema=schema)
+
+        return config
 
     def __init__(self):
         check_config()

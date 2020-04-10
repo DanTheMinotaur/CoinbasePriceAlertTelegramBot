@@ -4,6 +4,7 @@
     "bot_key": "ASMKJDNAKJDNKSAJNKDJsa"
   },
   "alerts": {
+    "price_file": "./data/last_price.json",
     "check": 60,
     "price_type": "spot",
     "currency_code": "EUR",
