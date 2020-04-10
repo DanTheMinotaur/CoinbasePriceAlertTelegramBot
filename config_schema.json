@@ -6,7 +6,9 @@
     "description": "The root schema comprises the entire JSON document.",
     "required": [
         "credentials",
-        "alerts"
+        "alerts",
+        "prices",
+        "price_file"
     ],
     "properties": {
         "credentials": {
@@ -17,8 +19,8 @@
             "default": {},
             "examples": [
                 {
-                    "chat_id": -12345.0,
-                    "bot_key": "ASMKJDNAKJDNKSAJNKDJsa"
+                    "bot_key": "ASMKJDNAKJDNKSAJNKDJsa",
+                    "chat_id": -12345.0
                 }
             ],
             "required": [
@@ -28,9 +30,10 @@
             "properties": {
                 "chat_id": {
                     "$id": "#/properties/credentials/properties/chat_id",
-                    "type": ["integer", "string"],
-                    "title": "The Telegram chat_id Schema",
-                    "description": "Telegram chat ID for messages to be sent to. ",
+                    "type": "integer",
+                    "title": "The Chat_id Schema",
+                    "description": "An explanation about the purpose of this instance.",
+                    "default": 0,
                     "examples": [
                         -12345
                     ]
@@ -39,7 +42,7 @@
                     "$id": "#/properties/credentials/properties/bot_key",
                     "type": "string",
                     "title": "The Bot_key Schema",
-                    "description": "API key for telegram. ",
+                    "description": "An explanation about the purpose of this instance.",
                     "default": "",
                     "examples": [
                         "ASMKJDNAKJDNKSAJNKDJsa"
@@ -55,82 +58,24 @@
             "default": {},
             "examples": [
                 {
-                    "crypto_code": "BTC",
-                    "price_type": "spot",
                     "price_alerts": [
                         2000.0,
                         3000.0,
                         4000.0,
                         5000.0
                     ],
-                    "currency_code": "EUR",
-                    "price_file": "./data/last_price.json",
                     "price_increments": [
                         50.0,
                         100.0,
                         200.0
-                    ],
-                    "check": 60.0
+                    ]
                 }
             ],
-            "required": [
-                "price_file",
-                "check",
-                "price_type",
-                "currency_code",
-                "crypto_code"
+            "anyOf": [
+                {"required": ["price_alerts"]},
+                {"required": ["price_increments"]}
             ],
             "properties": {
-                "price_file": {
-                    "$id": "#/properties/alerts/properties/price_file",
-                    "type": "string",
-                    "title": "The Price_file Schema",
-                    "description": "The bot will store the last price it received to this file, for restarting.",
-                    "default": "",
-                    "examples": [
-                        "./data/last_price.json"
-                    ]
-                },
-                "check": {
-                    "$id": "#/properties/alerts/properties/check",
-                    "type": "integer",
-                    "title": "The Check Schema",
-                    "description": "Amount of time in seconds to query coinbase for prices. ",
-                    "default": 0,
-                    "examples": [
-                        60
-                    ]
-                },
-                "price_type": {
-                    "$id": "#/properties/alerts/properties/price_type",
-                    "type": "string",
-                    "title": "The Price_type Schema",
-                    "description": "Type of price to get [buy, sell, spot]",
-                    "default": "",
-                    "examples": [
-                        "spot"
-                    ]
-                },
-                "currency_code": {
-                    "$id": "#/properties/alerts/properties/currency_code",
-                    "type": "string",
-                    "title": "The Currency_code Schema",
-                    "description": "Currency to convert crypto currency code ",
-                    "default": "",
-                    "examples": [
-                        "EUR"
-                    ]
-                },
-                "crypto_code": {
-                    "$id": "#/properties/alerts/properties/crypto_code",
-                    "type": "string",
-                    "title": "The Crypto_code Schema",
-                    "description": "Crypto currency to check. ",
-                    "default": "",
-                    "examples": [
-                        "BTC"
-                    ]
-                },
                 "price_alerts": {
                     "$id": "#/properties/alerts/properties/price_alerts",
                     "type": "array",
@@ -171,6 +116,79 @@
                     }
                 }
             }
+        },
+        "prices": {
+            "$id": "#/properties/prices",
+            "type": "object",
+            "title": "The Prices Schema",
+            "description": "An explanation about the purpose of this instance.",
+            "default": {},
+            "examples": [
+                {
+                    "price_type": "spot",
+                    "currency_code": "EUR",
+                    "check": 60.0,
+                    "crypto_code": "BTC"
+                }
+            ],
+            "required": [
+                "price_type",
+                "currency_code",
+                "crypto_code",
+                "check"
+            ],
+            "properties": {
+                "price_type": {
+                    "$id": "#/properties/prices/properties/price_type",
+                    "type": "string",
+                    "title": "The Price_type Schema",
+                    "description": "An explanation about the purpose of this instance.",
+                    "default": "",
+                    "examples": [
+                        "spot"
+                    ]
+                },
+                "currency_code": {
+                    "$id": "#/properties/prices/properties/currency_code",
+                    "type": "string",
+                    "title": "The Currency_code Schema",
+                    "description": "An explanation about the purpose of this instance.",
+                    "default": "",
+                    "examples": [
+                        "EUR"
+                    ]
+                },
+                "crypto_code": {
+                    "$id": "#/properties/prices/properties/crypto_code",
+                    "type": "string",
+                    "title": "The Crypto_code Schema",
+                    "description": "An explanation about the purpose of this instance.",
+                    "default": "",
+                    "examples": [
+                        "BTC"
+                    ]
+                },
+                "check": {
+                    "$id": "#/properties/prices/properties/check",
+                    "type": "integer",
+                    "title": "The Check Schema",
+                    "description": "An explanation about the purpose of this instance.",
+                    "default": 0,
+                    "examples": [
+                        60
+                    ]
+                }
+            }
+        },
+        "price_file": {
+            "$id": "#/properties/price_file",
+            "type": "string",
+            "title": "The Price_file Schema",
+            "description": "An explanation about the purpose of this instance.",
+            "default": "",
+            "examples": [
+                "./data/last_price.json"
+            ]
         }
     }
 }

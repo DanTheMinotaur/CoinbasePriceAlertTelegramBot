@@ -98,15 +98,52 @@ class CoinbaseBotController:
 
         return config
 
+    @staticmethod
+    def to_list(obj) -> list:
+        return list(obj) if not isinstance(obj, list) else obj
+
+    def set_alerts(self, config: dict):
+        if 'price_alerts' in config['alerts']:
+            self.price_change_increment = self.to_list(config['price_alerts'])
+        if 'price_increments' in config['alerts']:
+            self.price_change_increment = self.to_list(config['price_increments'])
+
+    def write_price_to_file(self, price: float or str) -> dict:
+        data = {
+            "price": float(price),
+            "time": datetime.now().strftime("%Y/%m/%d, %H:%M:%S")
+        }
+        with open(self.PRICE_FILE, 'w') as f:
+            f.write(json.dumps(data))
+
+        return data
+
+    def load_price_from_file(self) -> dict:
+        pricing_data = {"price": None, "time": None}
+        try:
+            with open(self.PRICE_FILE, 'r') as f:
+                price_file_data = json.loads(f.read())
+        except JSONDecodeError:
+            price_file_data = {"Default": ""}
+
+        for key in pricing_data.keys():
+            if key not in price_file_data:
+                return self.write_price_to_file(self.check_price(False)['amount'])
+
+        return price_file_data
+
     def __init__(self):
         config = self.load_config('../config_example.json')
         self.td_bot = TelegramCommunication(
             api_token=config['credentials']['bot_key'], chat_id=config['credentials']['chat_id'])
         self.check_every = config['alerts']['check']
-        self.price_change_increment = config['alerts']['price_increments']
+        self.price_change_increment = None
+        self.price_alert = None
         self.currency_code = None
         self.crypto_code = None
-        self.__set_currency_codes(config['alerts'])
+        self.set_alerts(config)
+        self.__set_currency_codes(config)
+        self.PRICE_FILE = config['price_file']
         self.last_price_data: float = self.load_price_from_file()['price']
 
     def start(self):
@@ -119,6 +156,7 @@ class CoinbaseBotController:
         return round(float(amount), 2)
 
     def __set_currency_codes(self, config):
+        config = config['prices']
         valid_currencies = get_valid_currency_codes()
 
         def check_code(variable: str):
@@ -153,36 +191,14 @@ class CoinbaseBotController:
                     current_amount,
                     self.currency_code
                 )
-                # message = f'{self.crypto_code} {price_change} by _{self.price_change_increment}_ is now' \
-                #           f' *{current_amount}{self.currency_code}*\nPrevious Price: {self.last_price_data}'
                 self.td_bot.send_message(message)
                 self.last_price_data = self.write_price_to_file(current_amount)['price']
 
         return price_data
 
-    def write_price_to_file(self, price: float or str) -> dict:
-        data = {
-            "price": float(price),
-            "time": datetime.now().strftime("%Y/%m/%d, %H:%M:%S")
-        }
-        with open(self.PRICE_FILE, 'w') as f:
-            f.write(json.dumps(data))
 
-        return data
 
-    def load_price_from_file(self) -> dict:
-        pricing_data = {"price": None, "time": None}
-        try:
-            with open(self.PRICE_FILE, 'r') as f:
-                price_file_data = json.loads(f.read())
-        except JSONDecodeError:
-            price_file_data = {"Default": ""}
 
-        for key in pricing_data.keys():
-            if key not in price_file_data:
-                return self.write_price_to_file(self.check_price(False)['amount'])
-
-        return price_file_data
 
 
 
