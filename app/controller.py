@@ -133,7 +133,7 @@ class CoinbaseBotController:
         return price_file_data
 
     def __init__(self):
-        config = self.load_config('../config_example.json')
+        config = self.load_config('../config.json')
         self.td_bot = TelegramCommunication(
             api_token=config['credentials']['bot_key'], chat_id=config['credentials']['chat_id'])
         self.check_every = config['alerts']['check']
@@ -172,26 +172,43 @@ class CoinbaseBotController:
         self.currency_code = check_code(config['currency_code'])
         self.crypto_code = check_code(config['crypto_code'])
 
-    def check_price(self, check: bool = True):
+    def check_price(self, check: bool = True) -> dict:
         price_data = get_price(self.crypto_code, self.currency_code)
         if check:
             current_amount = self.round_two(price_data['amount'])
-            price_change = None
+            message_sent = False
             print(f"Current Price {current_amount} \n Last Stored Price {self.last_price_data}")
-            if int(current_amount) >= int(self.last_price_data + self.price_change_increment):
-                price_change = 'increased'
-            elif int(current_amount) <= int(self.last_price_data - self.price_change_increment):
-                price_change = 'decreased'
+            if self.price_change_increment:
+                price_change = None
+                for increment in self.price_change_increment:
+                    if int(current_amount) >= int(self.last_price_data + increment):
+                        price_change = 'increased'
+                    elif int(current_amount) <= int(self.last_price_data - increment):
+                        price_change = 'decreased'
 
-            if price_change:
-                message = "{} {} by _{}_ is now *{}{}*".format(
-                    self.crypto_code,
-                    price_change,
-                    self.round_two(abs(current_amount - self.last_price_data)),
-                    current_amount,
-                    self.currency_code
-                )
-                self.td_bot.send_message(message)
+                    if price_change:
+                        message = "{} {} by _{}_ is now *{}{}*".format(
+                            self.crypto_code,
+                            price_change,
+                            self.round_two(abs(current_amount - self.last_price_data)),
+                            current_amount,
+                            self.currency_code
+                        )
+                        self.td_bot.send_message(message)
+                        message_sent = True
+            if self.price_alert:
+                for price in self.price_alert:
+                    if current_amount >= price > self.last_price_data or current_amount <= price < self.last_price_data:
+                        self.td_bot.send_message('*Price Alert!* {} just hit {} and is now {}{}!'.format(
+                            self.crypto_code,
+                            price,
+                            current_amount,
+                            self.currency_code
+                        ))
+                        message_sent = True
+                        break
+
+            if message_sent:
                 self.last_price_data = self.write_price_to_file(current_amount)['price']
 
         return price_data
