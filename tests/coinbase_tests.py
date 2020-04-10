@@ -1,10 +1,10 @@
 import unittest
-from app.coinbase_connection import get, get_valid_currency_codes, get_price
+from app.controller import get_coinbase, get_valid_currency_codes, get_price
 
 
 class MyTestCase(unittest.TestCase):
     def test_get_response(self):
-        self.assertEqual(get('currencies').status_code, 200)
+        self.assertEqual(get_coinbase('currencies').status_code, 200)
 
     def test_get_currency_codes(self):
         print(get_valid_currency_codes())
