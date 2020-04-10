@@ -1,10 +1,79 @@
-from app.coinbase_connection import get_valid_currency_codes, get_price
-from app.telegram_connection import TelegramBot
+# from app.telegram_connection import TelegramBot
 from os import environ
 import json
 from json.decoder import JSONDecodeError
 from datetime import datetime
 from time import sleep
+from urllib.parse import urljoin
+import requests
+
+VALID_PRICE_TYPES = ['spot', 'buy', 'sell']
+
+
+class TelegramConnectionException(Exception):
+    def __init__(self, response: requests.Response):
+        super().__init__(f'Bad Telegram response status {response.status_code}, "{response.json()}"')
+
+
+class TelegramCommunication:
+    def __init__(self, api_token: str, chat_id: int or str = None):
+        self.token = api_token
+        self.chat_id: str or int = chat_id
+
+    def request(self, method: str, endpoint: str, **kwargs) -> requests.Response:
+        config = {
+            'method': method,
+            'url': urljoin(f'https://api.telegram.org/bot{self.token}/', endpoint)
+        }
+        if kwargs:
+            config.update(kwargs)
+        response = requests.request(**config)
+        if response.status_code == 200:
+            return response
+        else:
+            raise TelegramConnectionException(response)
+
+    def get_me(self) -> dict:
+        return self.request('GET', 'getMe').json()
+
+    def send_message(self, message: str) -> dict:
+        return self.request('POST', 'sendMessage', **{
+            'headers': {
+                'Content-Type': 'application/json'
+            },
+            'data': json.dumps({
+                'chat_id': self.chat_id,
+                'text': message.replace('.', r'\.'),
+                'parse_mode': 'MarkdownV2'
+            })
+        }).json()
+
+
+class CoinbaseConnectionException(Exception):
+    def __init__(self, response: requests.Response):
+        super().__init__(f'Bad Coinbase response status {response.status_code}, "{response.json()}"')
+
+
+def get_coinbase(endpoint: str) -> requests.Response:
+    response = requests.get(f'https://api.coinbase.com/v2/{endpoint}')
+    if response.status_code == 200:
+        return response
+    raise CoinbaseConnectionException(response)
+
+
+def get_valid_currency_codes() -> dict:
+    currency_codes = set([code['id'] for code in get_coinbase('currencies').json()['data']])
+    all_currency_codes = set(get_coinbase('exchange-rates').json()['data']['rates'].keys())
+    return {
+        "crypto_codes": all_currency_codes.difference(currency_codes),
+        "currency_codes": currency_codes
+    }
+
+
+def get_price(from_currency_code: str, to_currency_code: str, price_type: str = 'spot') -> dict:
+    if price_type not in VALID_PRICE_TYPES:
+        raise ValueError(f'Price type {price_type} is not valid, used [f{", ".join(VALID_PRICE_TYPES)}]')
+    return get_coinbase(f'prices/{from_currency_code}-{to_currency_code}/{price_type}').json()['data']
 
 
 def check_config():
@@ -20,7 +89,7 @@ class CoinbaseBotController:
 
     def __init__(self):
         check_config()
-        self.td_bot = TelegramBot(api_token=environ['BOT_API_KEY'], chat_id=environ['CHAT_ID'])
+        self.td_bot = TelegramCommunication(api_token=environ['BOT_API_KEY'], chat_id=environ['CHAT_ID'])
         self.check_every = int(environ['CHECK_EVERY'])
         self.price_change_increment = self.round_two(environ['PRICE_CHANGE_INCREMENT'])
         self.currency_code = None
@@ -36,8 +105,6 @@ class CoinbaseBotController:
     @staticmethod
     def round_two(amount: float or int or str) -> float:
         return round(float(amount), 2)
-
-
 
     def __set_currency_codes(self):
         valid_currencies = get_valid_currency_codes()
@@ -76,7 +143,7 @@ class CoinbaseBotController:
                 )
                 # message = f'{self.crypto_code} {price_change} by _{self.price_change_increment}_ is now' \
                 #           f' *{current_amount}{self.currency_code}*\nPrevious Price: {self.last_price_data}'
-                self.td_bot.send_message(message, parse_mode='MarkdownV2')
+                self.td_bot.send_message(message)
                 self.last_price_data = self.write_price_to_file(current_amount)['price']
 
         return price_data
