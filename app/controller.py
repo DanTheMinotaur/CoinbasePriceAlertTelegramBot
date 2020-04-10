@@ -99,13 +99,14 @@ class CoinbaseBotController:
         return config
 
     def __init__(self):
-        check_config()
-        self.td_bot = TelegramCommunication(api_token=environ['BOT_API_KEY'], chat_id=environ['CHAT_ID'])
-        self.check_every = int(environ['CHECK_EVERY'])
-        self.price_change_increment = self.round_two(environ['PRICE_CHANGE_INCREMENT'])
+        config = self.load_config('../config_example.json')
+        self.td_bot = TelegramCommunication(
+            api_token=config['credentials']['bot_key'], chat_id=config['credentials']['chat_id'])
+        self.check_every = config['alerts']['check']
+        self.price_change_increment = config['alerts']['price_increments']
         self.currency_code = None
         self.crypto_code = None
-        self.__set_currency_codes()
+        self.__set_currency_codes(config['alerts'])
         self.last_price_data: float = self.load_price_from_file()['price']
 
     def start(self):
@@ -117,11 +118,11 @@ class CoinbaseBotController:
     def round_two(amount: float or int or str) -> float:
         return round(float(amount), 2)
 
-    def __set_currency_codes(self):
+    def __set_currency_codes(self, config):
         valid_currencies = get_valid_currency_codes()
 
         def check_code(variable: str):
-            code = environ[variable]
+            code = config[variable]
             cur_type = variable.split('_')[0].lower()
             key = f'{cur_type}_codes'
             if code in valid_currencies[key]:
@@ -130,8 +131,8 @@ class CoinbaseBotController:
                 raise ValueError(
                     f'{cur_type.title()} Code [{code}] is not valid use: [{", ".join(valid_currencies[key])}]')
 
-        self.currency_code = check_code('CURRENCY_CODE')
-        self.crypto_code = check_code('CRYPTO_CODE')
+        self.currency_code = check_code(config['currency_code'])
+        self.crypto_code = check_code(config['crypto_code'])
 
     def check_price(self, check: bool = True):
         price_data = get_price(self.crypto_code, self.currency_code)
