@@ -6,6 +6,7 @@ from time import sleep
 from urllib.parse import urljoin
 import requests
 from jsonschema import validate
+from app.schema import CONFIG_SCHEMA
 
 VALID_PRICE_TYPES = ['spot', 'buy', 'sell']
 
@@ -16,6 +17,8 @@ class TelegramConnectionException(Exception):
 
 
 class TelegramCommunication:
+    DEBUG = True
+
     def __init__(self, api_token: str, chat_id: int or str = None):
         self.token = api_token
         self.chat_id: str or int = chat_id
@@ -37,16 +40,19 @@ class TelegramCommunication:
         return self.request('GET', 'getMe').json()
 
     def send_message(self, message: str) -> dict:
-        return self.request('POST', 'sendMessage', **{
-            'headers': {
-                'Content-Type': 'application/json'
-            },
-            'data': json.dumps({
-                'chat_id': self.chat_id,
-                'text': message.replace('.', r'\.'),
-                'parse_mode': 'MarkdownV2'
-            })
-        }).json()
+        if self.DEBUG:
+            print(f'DEBUG: "{message}" sent to Telegram')
+        else:
+            return self.request('POST', 'sendMessage', **{
+                'headers': {
+                    'Content-Type': 'application/json'
+                },
+                'data': json.dumps({
+                    'chat_id': self.chat_id,
+                    'text': message.replace('.', r'\.'),
+                    'parse_mode': 'MarkdownV2'
+                })
+            }).json()
 
 
 class CoinbaseConnectionException(Exception):
@@ -76,25 +82,15 @@ def get_price(from_currency_code: str, to_currency_code: str, price_type: str = 
     return get_coinbase(f'prices/{from_currency_code}-{to_currency_code}/{price_type}').json()['data']
 
 
-def check_config():
-    for var in ['BOT_API_KEY', 'CHAT_ID', 'CURRENCY_CODE', 'CRYPTO_CODE', 'CHECK_EVERY', 'PRICE_CHANGE_INCREMENT']:
-        try:
-            environ[var]
-        except KeyError:
-            raise EnvironmentError(f'Environmental Variable "{var}" is not set.')
-
-
 class CoinbaseBotController:
     PRICE_FILE = './data/last_price.json'
 
     @staticmethod
     def load_config(file: str) -> dict:
-        with open('../config_schema.json') as f:
-            schema = json.loads(f.read())
         with open(file, 'r') as f:
             config = json.loads(f.read())
 
-        validate(instance=config, schema=schema)
+        validate(instance=config, schema=CONFIG_SCHEMA)
 
         return config
 
@@ -103,9 +99,10 @@ class CoinbaseBotController:
         return list(obj) if not isinstance(obj, list) else obj
 
     def set_alerts(self, config: dict):
-        if 'price_alerts' in config['alerts']:
+        config = config['alerts']
+        if 'price_alerts' in config:
             self.price_change_increment = self.to_list(config['price_alerts'])
-        if 'price_increments' in config['alerts']:
+        if 'price_increments' in config:
             self.price_change_increment = self.to_list(config['price_increments'])
 
     def write_price_to_file(self, price: float or str) -> dict:
@@ -132,11 +129,11 @@ class CoinbaseBotController:
 
         return price_file_data
 
-    def __init__(self):
-        config = self.load_config('../config.json')
+    def __init__(self, config_file: str = './config.json'):
+        config = self.load_config(config_file)
         self.td_bot = TelegramCommunication(
             api_token=config['credentials']['bot_key'], chat_id=config['credentials']['chat_id'])
-        self.check_every = config['alerts']['check']
+        self.check_every = config['prices']['check']
         self.price_change_increment = None
         self.price_alert = None
         self.currency_code = None
@@ -169,8 +166,8 @@ class CoinbaseBotController:
                 raise ValueError(
                     f'{cur_type.title()} Code [{code}] is not valid use: [{", ".join(valid_currencies[key])}]')
 
-        self.currency_code = check_code(config['currency_code'])
-        self.crypto_code = check_code(config['crypto_code'])
+        self.currency_code = check_code('currency_code')
+        self.crypto_code = check_code('crypto_code')
 
     def check_price(self, check: bool = True) -> dict:
         price_data = get_price(self.crypto_code, self.currency_code)
