@@ -176,43 +176,45 @@ class CoinbaseBotController:
         price_data = get_price(self.crypto_code, self.currency_code)
         if check:
             current_amount = self.round_two(price_data['amount'])
-            message_sent = False
             print(f"Current Price {current_amount} \n Last Stored Price {self.last_price_data}")
-            if self.price_change_increment:
-                price_change = None
-                for increment in self.price_change_increment:
-                    if int(current_amount) >= int(self.last_price_data + increment):
-                        price_change = 'increased'
-                    elif int(current_amount) <= int(self.last_price_data - increment):
-                        price_change = 'decreased'
-
-                    if price_change:
-                        message = "{} {} by _{}_ is now *{}{}*".format(
-                            self.crypto_code,
-                            price_change,
-                            self.round_two(abs(current_amount - self.last_price_data)),
-                            current_amount,
-                            self.currency_code
-                        )
-                        self.td_bot.send_message(message)
-                        message_sent = True
-            if self.price_alert:
-                for price in self.price_alert:
-                    if current_amount >= price > self.last_price_data or current_amount <= price < self.last_price_data:
-                        self.td_bot.send_message('*Price Alert!* {} just hit {} and is now {}{}!'.format(
-                            self.crypto_code,
-                            price,
-                            current_amount,
-                            self.currency_code
-                        ))
-                        message_sent = True
-                        break
-
-            if message_sent:
+            if self.__check_price_alert(current_amount) or self.__check_price_increment(current_amount):
                 self.last_price_data = self.write_price_to_file(current_amount)['price']
-
         return price_data
 
+    def __check_price_increment(self, current_amount: int or float):
+        if self.price_change_increment:
+            price_change = None
+            for increment in self.price_change_increment:
+                if int(current_amount) >= int(self.last_price_data + increment):
+                    price_change = 'increased'
+                elif int(current_amount) <= int(self.last_price_data - increment):
+                    price_change = 'decreased'
+
+                if price_change:
+                    message = "{} {} by _{}_ is now *{}{}*".format(
+                        self.crypto_code,
+                        price_change,
+                        self.round_two(abs(current_amount - self.last_price_data)),
+                        current_amount,
+                        self.currency_code
+                    )
+                    self.td_bot.send_message(message)
+                    return True
+        return False
+
+    def __check_price_alert(self, current_amount: int or float):
+        if self.price_alert:
+            for price in self.price_alert:
+                if current_amount >= price > self.last_price_data or current_amount <= price < self.last_price_data:
+                    self.td_bot.send_message('*Price Alert!* {} just hit {} and is now {}{}!'.format(
+                        self.crypto_code,
+                        price,
+                        current_amount,
+                        self.currency_code
+                    ))
+                    return True
+
+        return False
 
 
 
