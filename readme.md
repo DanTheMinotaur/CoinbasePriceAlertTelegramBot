@@ -19,7 +19,11 @@ To get the bot to post, you'll need to add it to a channel and then add the chan
 - Create a channel using the Telegram app. 
 - Send a message to the bot directly (For some reason this needs to happen for it to read messages).
 - Add the bot to the channel (as admin), and send a message so you can find the chat ID.  
-- Run the file ./app/util.py which will print a list of messages the bot has received, along with their IDs. 
+- Run the file ./app/util.py which will print a list of messages the bot has received, along with their IDs.
+```bash
+Message: "Hello" in chat has ID: 79782754
+Message: "Hello1234" in channel has ID: -1001358242442
+``` 
 - Get the chat ID and put it into `config.json`
 
 ## Set up price alerts
