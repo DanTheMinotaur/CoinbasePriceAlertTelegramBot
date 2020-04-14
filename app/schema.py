@@ -170,25 +170,15 @@ CONFIG_SCHEMA = {
                 },
                 "check": {
                     "$id": "#/properties/prices/properties/check",
-                    "type": "integer",
+                    "type": ["integer", "float"],
                     "title": "The Check Schema",
-                    "description": "An explanation about the purpose of this instance.",
-                    "default": 0,
+                    "description": "Time for between price checks",
+                    "default": 60,
                     "examples": [
                         60
                     ]
                 }
             }
-        },
-        "price_file": {
-            "$id": "#/properties/price_file",
-            "type": "string",
-            "title": "The Price_file Schema",
-            "description": "An explanation about the purpose of this instance.",
-            "default": "",
-            "examples": [
-                "./data/last_price.json"
-            ]
         }
     }
 }

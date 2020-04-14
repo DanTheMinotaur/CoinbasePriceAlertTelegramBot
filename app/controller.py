@@ -84,8 +84,6 @@ def get_price(from_currency_code: str, to_currency_code: str, price_type: str = 
 
 
 class CoinbaseBotController:
-    PRICE_FILE = './data/last_price.json'
-
     @staticmethod
     def load_config(file: str) -> dict:
         with open(file, 'r') as f:
@@ -116,14 +114,15 @@ class CoinbaseBotController:
         self.currency_code = None
         self.crypto_code = None
         self.set_alerts(config)
+        self.set_alerts(config)
         self.__set_currency_codes(config)
-        self.PRICE_FILE = config['price_file']
         self.last_price_data: float = 0.0
 
     def start(self):
         while True:
             if self.last_price_data == 0.0:
                 self.last_price_data = get_price(self.crypto_code, self.currency_code)['amount']
+                self.td_bot.send_message(f'Bot Started: Current {self.crypto_code} price is: {self.last_price_data}{self.currency_code}')
             self.check_price(get_price(self.crypto_code, self.currency_code)['amount'])
             sleep(self.check_every)
 
