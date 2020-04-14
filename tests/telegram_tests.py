@@ -21,6 +21,5 @@ class TestBotConnectivity(unittest.TestCase):
         self.assertTrue(r['ok'])
 
 
-
 if __name__ == '__main__':
     unittest.main()

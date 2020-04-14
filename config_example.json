@@ -4,11 +4,13 @@
     "bot_key": "ASMKJDNAKJDNKSAJNKDJsa"
   },
   "alerts": {
-    "check": 60,
+    "price_alerts": [2000, 3000, 4000, 5000],
+    "price_increments": [50, 100, 200]
+  },
+  "prices": {
     "price_type": "spot",
     "currency_code": "EUR",
     "crypto_code":  "BTC",
-    "price_alerts": [2000, 3000, 4000, 5000],
-    "price_increments": [50, 100, 200]
+    "check": 60
   }
 }

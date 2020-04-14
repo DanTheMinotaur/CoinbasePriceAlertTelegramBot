@@ -1,10 +1,9 @@
-from os import environ
 import json
-from json.decoder import JSONDecodeError
-from datetime import datetime
 from time import sleep
 from urllib.parse import urljoin
 import requests
+from jsonschema import validate
+from app.schema import CONFIG_SCHEMA
 
 VALID_PRICE_TYPES = ['spot', 'buy', 'sell']
 
@@ -36,6 +35,7 @@ class TelegramCommunication:
         return self.request('GET', 'getMe').json()
 
     def send_message(self, message: str) -> dict:
+        print(f'Message: "{message}" Sent to Telegram')
         return self.request('POST', 'sendMessage', **{
             'headers': {
                 'Content-Type': 'application/json'
@@ -54,7 +54,7 @@ class CoinbaseConnectionException(Exception):
 
 
 def get_coinbase(endpoint: str) -> requests.Response:
-    response = requests.get(f'https://api.coinbase.com/v2/{endpoint}')
+    response = requests.get(urljoin('https://api.coinbase.com/v2/', endpoint))
     if response.status_code == 200:
         return response
     raise CoinbaseConnectionException(response)
@@ -72,44 +72,65 @@ def get_valid_currency_codes() -> dict:
 def get_price(from_currency_code: str, to_currency_code: str, price_type: str = 'spot') -> dict:
     if price_type not in VALID_PRICE_TYPES:
         raise ValueError(f'Price type {price_type} is not valid, used [f{", ".join(VALID_PRICE_TYPES)}]')
-    return get_coinbase(f'prices/{from_currency_code}-{to_currency_code}/{price_type}').json()['data']
-
-
-def check_config():
-    for var in ['BOT_API_KEY', 'CHAT_ID', 'CURRENCY_CODE', 'CRYPTO_CODE', 'CHECK_EVERY', 'PRICE_CHANGE_INCREMENT']:
-        try:
-            environ[var]
-        except KeyError:
-            raise EnvironmentError(f'Environmental Variable "{var}" is not set.')
+    data = get_coinbase(f'prices/{from_currency_code}-{to_currency_code}/{price_type}').json()['data']
+    data['amount'] = float(data['amount'])
+    return data
 
 
 class CoinbaseBotController:
-    PRICE_FILE = './data/last_price.json'
+    @staticmethod
+    def load_config(file: str) -> dict:
+        with open(file, 'r') as f:
+            config = json.loads(f.read())
 
-    def __init__(self):
-        check_config()
-        self.td_bot = TelegramCommunication(api_token=environ['BOT_API_KEY'], chat_id=environ['CHAT_ID'])
-        self.check_every = int(environ['CHECK_EVERY'])
-        self.price_change_increment = self.round_two(environ['PRICE_CHANGE_INCREMENT'])
+        validate(instance=config, schema=CONFIG_SCHEMA)
+
+        return config
+
+    @staticmethod
+    def to_list(obj) -> list:
+        return list(obj) if not isinstance(obj, list) else obj
+
+    def set_alerts(self, config: dict):
+        config = config['alerts']
+        if 'price_alerts' in config:
+            self.price_change_increment = self.to_list(config['price_alerts'])
+        if 'price_increments' in config:
+            self.price_change_increment = self.to_list(config['price_increments'])
+
+    def __init__(self, config_file: str = './config.json'):
+        config = self.load_config(config_file)
+        self.td_bot = TelegramCommunication(
+            api_token=config['credentials']['bot_key'], chat_id=config['credentials']['chat_id'])
+        self.check_every = config['prices']['check']
+        self.price_change_increment = None
+        self.price_alert = None
         self.currency_code = None
         self.crypto_code = None
-        self.__set_currency_codes()
-        self.last_price_data: float = self.load_price_from_file()['price']
+        self.set_alerts(config)
+        self.set_alerts(config)
+        self.__set_currency_codes(config)
+        self.last_price_data: float = 0.0
 
     def start(self):
         while True:
-            self.check_price()
+            if self.last_price_data == 0.0:
+                self.last_price_data = get_price(self.crypto_code, self.currency_code)['amount']
+                self.td_bot.send_message(f'Bot Started: Current {self.crypto_code} price is: \
+                                        {self.round_two(self.last_price_data)}{self.currency_code}')
+            self.check_price(get_price(self.crypto_code, self.currency_code)['amount'])
             sleep(self.check_every)
 
     @staticmethod
     def round_two(amount: float or int or str) -> float:
         return round(float(amount), 2)
 
-    def __set_currency_codes(self):
+    def __set_currency_codes(self, config):
+        config = config['prices']
         valid_currencies = get_valid_currency_codes()
 
         def check_code(variable: str):
-            code = environ[variable]
+            code = config[variable]
             cur_type = variable.split('_')[0].lower()
             key = f'{cur_type}_codes'
             if code in valid_currencies[key]:
@@ -118,58 +139,51 @@ class CoinbaseBotController:
                 raise ValueError(
                     f'{cur_type.title()} Code [{code}] is not valid use: [{", ".join(valid_currencies[key])}]')
 
-        self.currency_code = check_code('CURRENCY_CODE')
-        self.crypto_code = check_code('CRYPTO_CODE')
+        self.currency_code = check_code('currency_code')
+        self.crypto_code = check_code('crypto_code')
 
-    def check_price(self, check: bool = True):
-        price_data = get_price(self.crypto_code, self.currency_code)
-        if check:
-            current_amount = self.round_two(price_data['amount'])
+    def check_price(self, current_price: float or int) -> float:
+        current_amount = self.round_two(current_price)
+        if self.check_price_alert(current_amount) or self.check_price_increment(current_amount):
+            self.last_price_data = current_amount
+        return current_amount
+
+    def check_price_increment(self, current_amount: int or float):
+        if self.price_change_increment:
             price_change = None
-            print(f"Current Price {current_amount} \n Last Stored Price {self.last_price_data}")
-            if int(current_amount) >= int(self.last_price_data + self.price_change_increment):
-                price_change = 'increased'
-            elif int(current_amount) <= int(self.last_price_data - self.price_change_increment):
-                price_change = 'decreased'
+            for increment in self.price_change_increment:
+                if int(current_amount) >= int(self.last_price_data + increment):
+                    price_change = 'increased'
+                elif int(current_amount) <= int(self.last_price_data - increment):
+                    price_change = 'decreased'
 
-            if price_change:
-                message = "{} {} by _{}_ is now *{}{}*".format(
-                    self.crypto_code,
-                    price_change,
-                    self.round_two(abs(current_amount - self.last_price_data)),
-                    current_amount,
-                    self.currency_code
-                )
-                # message = f'{self.crypto_code} {price_change} by _{self.price_change_increment}_ is now' \
-                #           f' *{current_amount}{self.currency_code}*\nPrevious Price: {self.last_price_data}'
-                self.td_bot.send_message(message)
-                self.last_price_data = self.write_price_to_file(current_amount)['price']
+                if price_change:
+                    message = "{} {} by _{}_ is now *{}{}*".format(
+                        self.crypto_code,
+                        price_change,
+                        self.round_two(abs(current_amount - self.last_price_data)),
+                        current_amount,
+                        self.currency_code
+                    )
+                    self.td_bot.send_message(message)
+                    return True
+        return False
 
-        return price_data
+    def check_price_alert(self, current_amount: int or float):
+        if self.price_alert:
+            for price in self.price_alert:
+                if current_amount >= price > self.last_price_data or current_amount <= price < self.last_price_data:
+                    self.td_bot.send_message('*Price Alert!* {} just hit {} and is now {}{}!'.format(
+                        self.crypto_code,
+                        price,
+                        current_amount,
+                        self.currency_code
+                    ))
+                    return True
+        return False
 
-    def write_price_to_file(self, price: float or str) -> dict:
-        data = {
-            "price": float(price),
-            "time": datetime.now().strftime("%Y/%m/%d, %H:%M:%S")
-        }
-        with open(self.PRICE_FILE, 'w') as f:
-            f.write(json.dumps(data))
 
-        return data
 
-    def load_price_from_file(self) -> dict:
-        pricing_data = {"price": None, "time": None}
-        try:
-            with open(self.PRICE_FILE, 'r') as f:
-                price_file_data = json.loads(f.read())
-        except JSONDecodeError:
-            price_file_data = {"Default": ""}
-
-        for key in pricing_data.keys():
-            if key not in price_file_data:
-                return self.write_price_to_file(self.check_price(False)['amount'])
-
-        return price_file_data
 
 
 
