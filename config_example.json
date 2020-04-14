@@ -12,6 +12,5 @@
     "currency_code": "EUR",
     "crypto_code":  "BTC",
     "check": 60
-  },
-  "price_file": "./data/last_price.json"
+  }
 }
