@@ -4,8 +4,4 @@ services:
   coinbase_telegram_bot:
     build: .
     container_name: btc_bot
-    env_file:
-      - .env
-    restart: unless-stopped
-    volumes:
-      - ./data:/usr/src/app/data
+#    restart: unless-stopped

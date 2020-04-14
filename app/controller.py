@@ -1,7 +1,4 @@
-from os import environ
 import json
-from json.decoder import JSONDecodeError
-from datetime import datetime
 from time import sleep
 from urllib.parse import urljoin
 import requests
@@ -17,8 +14,6 @@ class TelegramConnectionException(Exception):
 
 
 class TelegramCommunication:
-    DEBUG = True
-
     def __init__(self, api_token: str, chat_id: int or str = None):
         self.token = api_token
         self.chat_id: str or int = chat_id
@@ -40,20 +35,17 @@ class TelegramCommunication:
         return self.request('GET', 'getMe').json()
 
     def send_message(self, message: str) -> dict:
-        if self.DEBUG:
-            print(f'DEBUG: "{message}" sent to Telegram')
-        else:
-            print(f'Message "{message}" Sent to Telegram')
-            return self.request('POST', 'sendMessage', **{
-                'headers': {
-                    'Content-Type': 'application/json'
-                },
-                'data': json.dumps({
-                    'chat_id': self.chat_id,
-                    'text': message.replace('.', r'\.'),
-                    'parse_mode': 'MarkdownV2'
-                })
-            }).json()
+        print(f'Message: "{message}" Sent to Telegram')
+        return self.request('POST', 'sendMessage', **{
+            'headers': {
+                'Content-Type': 'application/json'
+            },
+            'data': json.dumps({
+                'chat_id': self.chat_id,
+                'text': message.replace('.', r'\.'),
+                'parse_mode': 'MarkdownV2'
+            })
+        }).json()
 
 
 class CoinbaseConnectionException(Exception):
@@ -62,7 +54,7 @@ class CoinbaseConnectionException(Exception):
 
 
 def get_coinbase(endpoint: str) -> requests.Response:
-    response = requests.get(f'https://api.coinbase.com/v2/{endpoint}')
+    response = requests.get(urljoin('https://api.coinbase.com/v2/', endpoint))
     if response.status_code == 200:
         return response
     raise CoinbaseConnectionException(response)
@@ -80,7 +72,9 @@ def get_valid_currency_codes() -> dict:
 def get_price(from_currency_code: str, to_currency_code: str, price_type: str = 'spot') -> dict:
     if price_type not in VALID_PRICE_TYPES:
         raise ValueError(f'Price type {price_type} is not valid, used [f{", ".join(VALID_PRICE_TYPES)}]')
-    return get_coinbase(f'prices/{from_currency_code}-{to_currency_code}/{price_type}').json()['data']
+    data = get_coinbase(f'prices/{from_currency_code}-{to_currency_code}/{price_type}').json()['data']
+    data['amount'] = float(data['amount'])
+    return data
 
 
 class CoinbaseBotController:
@@ -122,7 +116,8 @@ class CoinbaseBotController:
         while True:
             if self.last_price_data == 0.0:
                 self.last_price_data = get_price(self.crypto_code, self.currency_code)['amount']
-                self.td_bot.send_message(f'Bot Started: Current {self.crypto_code} price is: {self.last_price_data}{self.currency_code}')
+                self.td_bot.send_message(f'Bot Started: Current {self.crypto_code} price is: \
+                                        {self.round_two(self.last_price_data)}{self.currency_code}')
             self.check_price(get_price(self.crypto_code, self.currency_code)['amount'])
             sleep(self.check_every)
 
@@ -149,7 +144,6 @@ class CoinbaseBotController:
 
     def check_price(self, current_price: float or int) -> float:
         current_amount = self.round_two(current_price)
-        print(f"Current Price {current_amount} \nLast Stored Price {self.last_price_data}")
         if self.check_price_alert(current_amount) or self.check_price_increment(current_amount):
             self.last_price_data = current_amount
         return current_amount

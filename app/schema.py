@@ -7,8 +7,7 @@ CONFIG_SCHEMA = {
     "required": [
         "credentials",
         "alerts",
-        "prices",
-        "price_file"
+        "prices"
     ],
     "properties": {
         "credentials": {
@@ -170,7 +169,7 @@ CONFIG_SCHEMA = {
                 },
                 "check": {
                     "$id": "#/properties/prices/properties/check",
-                    "type": ["integer", "float"],
+                    "type": "number",
                     "title": "The Check Schema",
                     "description": "Time for between price checks",
                     "default": 60,
