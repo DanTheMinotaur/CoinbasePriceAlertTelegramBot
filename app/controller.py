@@ -43,6 +43,7 @@ class TelegramCommunication:
         if self.DEBUG:
             print(f'DEBUG: "{message}" sent to Telegram')
         else:
+            print(f'Message "{message}" Sent to Telegram')
             return self.request('POST', 'sendMessage', **{
                 'headers': {
                     'Content-Type': 'application/json'
@@ -105,30 +106,6 @@ class CoinbaseBotController:
         if 'price_increments' in config:
             self.price_change_increment = self.to_list(config['price_increments'])
 
-    def write_price_to_file(self, price: float or str) -> dict:
-        data = {
-            "price": float(price),
-            "time": datetime.now().strftime("%Y/%m/%d, %H:%M:%S")
-        }
-        with open(self.PRICE_FILE, 'w') as f:
-            f.write(json.dumps(data))
-
-        return data
-
-    def load_price_from_file(self) -> dict:
-        pricing_data = {"price": None, "time": None}
-        try:
-            with open(self.PRICE_FILE, 'r') as f:
-                price_file_data = json.loads(f.read())
-        except JSONDecodeError:
-            price_file_data = {"Default": ""}
-
-        for key in pricing_data.keys():
-            if key not in price_file_data:
-                return self.write_price_to_file(self.check_price(False)['amount'])
-
-        return price_file_data
-
     def __init__(self, config_file: str = './config.json'):
         config = self.load_config(config_file)
         self.td_bot = TelegramCommunication(
@@ -141,11 +118,13 @@ class CoinbaseBotController:
         self.set_alerts(config)
         self.__set_currency_codes(config)
         self.PRICE_FILE = config['price_file']
-        self.last_price_data: float = self.load_price_from_file()['price']
+        self.last_price_data: float = 0.0
 
     def start(self):
         while True:
-            self.check_price()
+            if self.last_price_data == 0.0:
+                self.last_price_data = get_price(self.crypto_code, self.currency_code)['amount']
+            self.check_price(get_price(self.crypto_code, self.currency_code)['amount'])
             sleep(self.check_every)
 
     @staticmethod
@@ -169,16 +148,14 @@ class CoinbaseBotController:
         self.currency_code = check_code('currency_code')
         self.crypto_code = check_code('crypto_code')
 
-    def check_price(self, check: bool = True) -> dict:
-        price_data = get_price(self.crypto_code, self.currency_code)
-        if check:
-            current_amount = self.round_two(price_data['amount'])
-            print(f"Current Price {current_amount} \n Last Stored Price {self.last_price_data}")
-            if self.__check_price_alert(current_amount) or self.__check_price_increment(current_amount):
-                self.last_price_data = self.write_price_to_file(current_amount)['price']
-        return price_data
+    def check_price(self, current_price: float or int) -> float:
+        current_amount = self.round_two(current_price)
+        print(f"Current Price {current_amount} \nLast Stored Price {self.last_price_data}")
+        if self.check_price_alert(current_amount) or self.check_price_increment(current_amount):
+            self.last_price_data = current_amount
+        return current_amount
 
-    def __check_price_increment(self, current_amount: int or float):
+    def check_price_increment(self, current_amount: int or float):
         if self.price_change_increment:
             price_change = None
             for increment in self.price_change_increment:
@@ -199,7 +176,7 @@ class CoinbaseBotController:
                     return True
         return False
 
-    def __check_price_alert(self, current_amount: int or float):
+    def check_price_alert(self, current_amount: int or float):
         if self.price_alert:
             for price in self.price_alert:
                 if current_amount >= price > self.last_price_data or current_amount <= price < self.last_price_data:
@@ -210,7 +187,6 @@ class CoinbaseBotController:
                         self.currency_code
                     ))
                     return True
-
         return False
 
 
