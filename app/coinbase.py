@@ -30,10 +30,11 @@ async def get_currency_codes(session: aiohttp.ClientSession) -> dict:
     }
 
 
-async def get_price(session: aiohttp.ClientSession, crypto: str, fiat: str, price_type: str = 'spot'):
+async def get_price(session: aiohttp.ClientSession, crypto: str, fiat: str, price_type: str = 'spot') -> float:
     if price_type not in VALID_PRICE_TYPES:
         raise ValueError(f'Price type {price_type} is not valid, used [f{", ".join(VALID_PRICE_TYPES)}]')
-    price_data = await _to_json(await coinbase_request(f'prices/{crypto}-{fiat}/{price_type}', session))
-    price_data = price_data['data']
-    price_data['amount'] = float(price_data['amount'])
-    return price_data
+    resp = await coinbase_request(f'prices/{crypto}-{fiat}/{price_type}', session)
+    if resp.status != 200:
+        raise CoinbaseResponseException('Invalid Price Types used')
+    price_data = await _to_json(resp)
+    return float(price_data['data']['amount'])
