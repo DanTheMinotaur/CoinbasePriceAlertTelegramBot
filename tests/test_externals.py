@@ -1,5 +1,6 @@
 from app.coinbase import get_price
-from app.execptions import CoinbaseResponseException
+from app.messaging.telegram import TelegramMessaging
+from app.execptions import CoinbaseResponseException, TelegramResponseException
 from aioresponses import aioresponses
 import aiohttp
 import asyncio
@@ -48,3 +49,47 @@ def test_get_price_failures():
 
     asyncio.run(_tester())
 
+
+def test_telegram():
+    async def _tester():
+        with aioresponses() as mock:
+            token = 'aaa'
+            tg = TelegramMessaging(api_token=token)
+            valid_response = {
+                "ok": True,
+                "result": {
+                    "message_id": 1000,
+                    "sender_chat": {
+                        "id": -100000000,
+                        "title": "Some Chat",
+                        "type": "channel"
+                    },
+                    "chat": {
+                        "id": -100000000,
+                        "title": "Some Chat",
+                        "type": "channel"
+                    },
+                    "date": 1613947287,
+                    "text": "Hello"
+                }
+            }
+            mock.post(f'https://api.telegram.org/bot{token}/sendMessage', payload=valid_response)
+
+            result = await tg.send_message(message='Hello', chat_id=-100000000)
+            assert result == valid_response
+            await tg.close()
+
+            token = 'bbb'
+            tg = TelegramMessaging(api_token=token)
+            mock.post(f'https://api.telegram.org/bot{token}/sendMessage', payload={
+                "ok": False,
+                "error_code": 401,
+                "description": "Unauthorized"
+            }, status=401)
+
+            with pytest.raises(TelegramResponseException):
+                await tg.send_message('Hello', chat_id=-100000000)
+
+            await tg.close()
+
+    asyncio.run(_tester())

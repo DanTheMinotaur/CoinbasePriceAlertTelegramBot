@@ -1,7 +1,6 @@
 from urllib.parse import urljoin
 import aiohttp
 import asyncio
-from app.controller import VALID_PRICE_TYPES
 from app.execptions import CoinbaseResponseException, raise_for_response
 
 
@@ -31,10 +30,9 @@ async def get_currency_codes(session: aiohttp.ClientSession) -> dict:
 
 
 async def get_price(session: aiohttp.ClientSession, crypto: str, fiat: str, price_type: str = 'spot') -> float:
-    if price_type not in VALID_PRICE_TYPES:
-        raise ValueError(f'Price type {price_type} is not valid, used [f{", ".join(VALID_PRICE_TYPES)}]')
+    price_types = ('spot', 'buy', 'sell',)
+    if price_type not in price_types:
+        raise ValueError(f'Price type {price_type} is not valid, used [f{", ".join(price_types)}]')
     resp = await coinbase_request(f'prices/{crypto}-{fiat}/{price_type}', session)
-    if resp.status != 200:
-        raise CoinbaseResponseException('Invalid Price Types used')
     price_data = await _to_json(resp)
     return float(price_data['data']['amount'])
