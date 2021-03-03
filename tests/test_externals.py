@@ -1,6 +1,6 @@
-from app.coinbase import get_price
-from app.messaging.telegram import TelegramMessaging
-from app.execptions import CoinbaseResponseException, TelegramResponseException
+from cryptoprices.coinbase import get_price
+from cryptoprices.messaging.telegram import TelegramMessaging
+from cryptoprices.execptions import CoinbaseResponseException, TelegramResponseException
 from aioresponses import aioresponses
 import aiohttp
 import asyncio

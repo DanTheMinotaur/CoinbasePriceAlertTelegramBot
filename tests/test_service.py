@@ -1,4 +1,5 @@
-from app.service import BotService, Notifier, State
+from cryptoprices.service import BotService
+from cryptoprices.types import Notifier, State
 
 
 def test_get_nearest_increments():

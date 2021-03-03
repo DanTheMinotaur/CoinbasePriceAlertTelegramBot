@@ -1,8 +1,8 @@
 import aiohttp
 from urllib.parse import urljoin
-from app.execptions import TelegramResponseException, raise_for_response
-from app.util import logger
-from app.messaging.abstract import Messaging
+from cryptoprices.execptions import TelegramResponseException, raise_for_response
+import logging
+from cryptoprices.messaging.abstract import Messaging
 
 
 class TelegramMessaging(Messaging):
@@ -25,7 +25,7 @@ class TelegramMessaging(Messaging):
         return await response.json()
 
     async def send_message(self, message: str, chat_id: str or int) -> dict:
-        logger.info(f'Sending Telegram Message: {message}')
+        logging.info(f'Sending Telegram Message: {message}')
         response = await self._request('sendMessage', json={
             'chat_id': chat_id,
             'text': message.replace('.', r'\.'),

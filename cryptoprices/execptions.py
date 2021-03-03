@@ -1,11 +1,11 @@
 from aiohttp import ClientResponse
-from app.util import logger
+import logging
 
 
 class ResponseException(Exception):
     def __init__(self, status: int, response_content: str, _self):
         message = f'{self.get_class_name(_self)}; Bad response status: {status}, content "{response_content}"'
-        logger.error(message)
+        logging.error(message)
         super().__init__(message)
 
     @staticmethod
@@ -21,6 +21,11 @@ class TelegramResponseException(ResponseException):
 class CoinbaseResponseException(ResponseException):
     def __init__(self, status: int, response_content: dict):
         super().__init__(status, ', '.join([e['message'] for e in response_content['errors']]), self)
+
+
+class ConfigException(Exception):
+    def __init__(self, exception: Exception):
+        logging.error(f'Unable to parse config file {exception}')
 
 
 def raise_for_response(exception):

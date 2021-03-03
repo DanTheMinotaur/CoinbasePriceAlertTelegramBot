@@ -1,7 +1,7 @@
 from urllib.parse import urljoin
 import aiohttp
 import asyncio
-from app.execptions import CoinbaseResponseException, raise_for_response
+from cryptoprices.execptions import CoinbaseResponseException, raise_for_response
 
 
 @raise_for_response(CoinbaseResponseException)
