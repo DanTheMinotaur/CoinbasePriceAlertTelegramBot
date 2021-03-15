@@ -37,30 +37,27 @@ class BotService:
     def fmt_float(num: float) -> str:
         return "{:.2f}".format(num)
 
-    async def _update_notifier_price(self, n: Notifier) -> Notifier:
+    async def _check_price_increment(self, n: Notifier) -> str or None:
+        message = None
         try:
+
             current_price = await get_price(self._session, n.crypto, n.currency, n.price_type)
 
             nearest_increment = self.get_nearest_increment(current_price, n.increment)
 
             if n.internals.last_alert is None:
                 n.internals.last_alert = nearest_increment
-                await self._messenger.send_message(
-                    message=f'Bot Started\! Check if {n.crypto} changes by {self.fmt_float(n.increment)}{n.currency}',
-                    chat_id=n.chat_id
-                )
+                # await self._messenger.send_message(
+                #     message=f'Bot Started, Checking if {n.crypto} changes by {self.fmt_float(n.increment)}{n.currency}'
+                # )
 
             if self.is_incremented(current_price, n):
                 m = 'increased above' if current_price > n.internals.last_alert else 'decreased below'
                 message = '\n'.join([
-                    f'_{n.crypto}_ just {m} {self.fmt_float(nearest_increment)}.',
+                    f'_{n.crypto.upper()}_ just {m} {self.fmt_float(nearest_increment)}.',
                     f'Current Price: {self.fmt_float(current_price)}{n.currency}',
                     f'Previous Price: {self.fmt_float(n.internals.last_price)}{n.currency}'
                 ])
-                await self._messenger.send_message(
-                    message=message,
-                    chat_id=n.chat_id
-                )
                 n.internals.last_alert = nearest_increment
 
             n.internals.last_price = current_price
@@ -70,12 +67,17 @@ class BotService:
             elif isinstance(e, TelegramMessaging):
                 logging.error('Could not send message to telegram.', e)
         logging.debug(n)
-        return n
+        return message
 
     async def check_prices(self):
-        await asyncio.gather(
-            *[self._update_notifier_price(notifier) for notifier in self._alerts]
+        messages = await asyncio.gather(
+            *[self._check_price_increment(notifier) for notifier in self._alerts]
         )
+        messages = list(filter(None, list(messages)))
+
+        if messages:
+            messages = '\n'.join(messages)
+            await self._messenger.send_message(messages)
 
 
 

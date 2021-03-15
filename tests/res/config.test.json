@@ -7,8 +7,7 @@
     "internals": {
         "last_price": null,
         "last_alert": null
-    },
-    "chat_id": 1
+    }
   },
   {
     "currency": "USD",
@@ -18,7 +17,6 @@
     "internals": {
         "last_price": null,
         "last_alert": null
-    },
-    "chat_id": 1
+    }
   }
 ]

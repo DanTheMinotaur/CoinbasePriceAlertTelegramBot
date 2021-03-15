@@ -9,6 +9,15 @@ class TelegramMessaging(Messaging):
     def __init__(self, api_token: str):
         self.__token = api_token
         self._session = aiohttp.ClientSession()
+        self._chat_id = None
+
+    @property
+    def chat_id(self):
+        return self._chat_id
+
+    @chat_id.setter
+    def chat_id(self, chat_id: int):
+        self._chat_id = chat_id
 
     @raise_for_response(TelegramResponseException)
     async def _request(self, endpoint: str, **kwargs) -> aiohttp.ClientResponse:
@@ -24,8 +33,14 @@ class TelegramMessaging(Messaging):
         response = await self._request('getMe', method='GET')
         return await response.json()
 
-    async def send_message(self, message: str, chat_id: str or int) -> dict:
+    async def send_message(self, message: str, chat_id: str or int = None) -> dict:
+        if chat_id is None and self._chat_id:
+            chat_id = self._chat_id
+        elif chat_id is None and self._chat_id is None:
+            raise ValueError('No Telegram Chat ID set.')
+
         logging.info(f'Sending Telegram Message: {message}')
+
         response = await self._request('sendMessage', json={
             'chat_id': chat_id,
             'text': message.replace('.', r'\.'),
@@ -33,4 +48,3 @@ class TelegramMessaging(Messaging):
         })
         res = await response.json()
         return res
-

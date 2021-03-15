@@ -15,5 +15,4 @@ class Notifier:
     price_type: str
     increment: Union[float, int]
     internals: State
-    chat_id: int
 

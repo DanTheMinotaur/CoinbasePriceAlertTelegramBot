@@ -11,7 +11,6 @@ def test_load_notifiers():
 
     assert result == [
         Notifier(
-            chat_id=1,
             currency="EUR",
             crypto="BTC",
             price_type="spot",
@@ -19,7 +18,6 @@ def test_load_notifiers():
             internals=State(last_alert=None, last_price=None)
         ),
         Notifier(
-            chat_id=1,
             currency="USD",
             crypto="ETC",
             price_type="spot",

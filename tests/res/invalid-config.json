@@ -3,7 +3,6 @@
     "currency": "EUR",
     "crypto": "BTC",
     "price_type": "spot",
-    "increment": 50,
-    "chat_id": 1
+    "increment": 50
   }
 ]

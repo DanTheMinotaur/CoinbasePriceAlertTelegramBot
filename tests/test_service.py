@@ -25,8 +25,7 @@ def test_is_incremented():
         internals=State(
             last_alert=43500.00,
             last_price=43782.22
-        ),
-        chat_id=1
+        )
     )
 
     assert BotService.is_incremented(44402.11, t1)
@@ -42,8 +41,7 @@ def test_is_incremented():
         internals=State(
             last_alert=19.30,
             last_price=19.22
-        ),
-        chat_id=1
+        )
     )
 
     assert BotService.is_incremented(19.50, t2)
