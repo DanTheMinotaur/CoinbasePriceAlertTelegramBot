@@ -2,12 +2,13 @@ FROM python:3.7
 
 WORKDIR /usr/src/app
 
-COPY requirements.txt ./
+COPY Pipfile ./
+COPY Pipfile.lock ./
+COPY cryptoprices/ ./cryptoprices/
+COPY price_alert.py ./
 
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install pipenv
 
-COPY ./app ./app
-COPY ./run_telegram_bot.py ./
-COPY ./config.json ./config.json
+RUN pipenv install --deploy --system
 
-CMD [ "python", "./run_telegram_bot.py" ]
+CMD [ "python", "./price_alert.py" ]

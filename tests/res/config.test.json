@@ -1,0 +1,22 @@
+[
+  {
+    "currency": "EUR",
+    "crypto": "BTC",
+    "price_type": "spot",
+    "increment": 50,
+    "internals": {
+        "last_price": null,
+        "last_alert": null
+    }
+  },
+  {
+    "currency": "USD",
+    "crypto": "ETC",
+    "price_type": "spot",
+    "increment": 0.30,
+    "internals": {
+        "last_price": null,
+        "last_alert": null
+    }
+  }
+]

@@ -3,5 +3,9 @@ version: '3.3'
 services:
   coinbase_telegram_bot:
     build: .
-    container_name: btc_bot
+    container_name: crypto_prices
     restart: unless-stopped
+    volumes:
+    - ./alerts:/usr/src/app/alerts
+    env_file:
+      - .env
