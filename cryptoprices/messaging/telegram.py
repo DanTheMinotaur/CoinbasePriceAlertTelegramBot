@@ -6,10 +6,10 @@ from cryptoprices.messaging.abstract import Messaging
 
 
 class TelegramMessaging(Messaging):
-    def __init__(self, api_token: str):
+    def __init__(self, api_token: str, chat_id: int or None = None):
         self.__token = api_token
         self._session = aiohttp.ClientSession()
-        self._chat_id = None
+        self._chat_id = chat_id
 
     @property
     def chat_id(self):

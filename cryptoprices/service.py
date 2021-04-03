@@ -47,14 +47,11 @@ class BotService:
 
             if n.internals.last_alert is None:
                 n.internals.last_alert = nearest_increment
-                # await self._messenger.send_message(
-                #     message=f'Bot Started, Checking if {n.crypto} changes by {self.fmt_float(n.increment)}{n.currency}'
-                # )
 
             if self.is_incremented(current_price, n):
                 m = 'increased above' if current_price > n.internals.last_alert else 'decreased below'
                 message = '\n'.join([
-                    f'_{n.crypto.upper()}_ just {m} {self.fmt_float(nearest_increment)}.',
+                    f'_{n.crypto.upper()}_ just {m} {self.fmt_float(nearest_increment)}{n.currency}',
                     f'Current Price: {self.fmt_float(current_price)}{n.currency}',
                     f'Previous Price: {self.fmt_float(n.internals.last_price)}{n.currency}'
                 ])
@@ -80,7 +77,10 @@ class BotService:
             await self._messenger.send_message(messages)
 
 
-
+async def create_bot_service(alerts: List[Notifier], messaging_client: Messaging = None) -> BotService:
+    cryptos = [n.crypto for n in alerts]
+    await messaging_client.send_message(f'Bot Service Started\n{", ".join(cryptos)}')
+    return BotService(alerts, messaging_client)
 
 
 
